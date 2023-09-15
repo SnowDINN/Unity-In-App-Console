@@ -5,21 +5,15 @@ using TMPro;
 using UnityEngine;
 using System.Text.RegularExpressions;
 
-namespace Anonymous.Command
+namespace Anonymous.Systems
 {
-    public class ApplicationDebugCommand : MonoBehaviour
+    public class ApplicationDebugSystemsCommandSystem : MonoBehaviour, IApplicationDebugSystems
     {
-        private static readonly Dictionary<string, Action<string>> Command = new Dictionary<string, Action<string>>();
+        private static readonly Dictionary<string, Action<string>> Command = new();
 
         public static void AddCommand(string command, Action<string> action)
         {
-            if (Command.ContainsKey(command))
-            {
-                Debug.LogWarningFormat("'{0}' Command가 이미 존재하여 덮어 씁니다.", command);
-                Command[command] = action;
-            }
-            else
-                Command.Add(command, action);
+            Command[command] = action;
         }
 
         public static void RemoveCommand(string command)
@@ -44,15 +38,15 @@ namespace Anonymous.Command
         private readonly int[] chrint = {44032,44620,45208,45796,46384,46972,47560,48148,48736,49324,49912,
                                50500,51088,51676,52264,52852,53440,54028,54616,55204};
 
-        private void Awake()
+        public void Setup()
         {
             UIInputCommand.onSubmit.AddListener(value =>
             {
                 var split = value.Split(' ');
                 if (Command.ContainsKey(split[0]))
                 {
-                    Command[split[0]].Invoke(value);
                     Debug.Log($"<color=#ffa500ff>[Command : {value}]</color>");
+                    Command[split[0]].Invoke(value);
                 }
 
                 UIInputCommand.text = string.Empty;
@@ -64,7 +58,7 @@ namespace Anonymous.Command
                 if (string.IsNullOrEmpty(command))
                 {
                     foreach (Transform transform in CommandContents)
-                        GameObject.Destroy(transform.gameObject);
+                        Destroy(transform.gameObject);
                     CommandSupporterObject.SetActive(false);
                     return;
                 }
@@ -72,7 +66,7 @@ namespace Anonymous.Command
                 if (Command == null || Command.Count == 0)
                 {
                     foreach (Transform transform in CommandContents)
-                        GameObject.Destroy(transform.gameObject);
+                        Destroy(transform.gameObject);
                     CommandSupporterObject.SetActive(false);
                     return;
                 }
@@ -123,19 +117,31 @@ namespace Anonymous.Command
                 var keys = Command.Keys.ToList();
                 keys.Sort();
 
-                var matched = keys.Where(key => Regex.IsMatch(key.ToLower(), pattern));
-                foreach (Transform transform in CommandContents)
-                    Destroy(transform.gameObject);
-                matched.ToList().ForEach(search =>
+                try
                 {
-                    var prefab = Instantiate(CommandPrefabs, CommandContents);
-                    var item = prefab.GetComponent<ApplicationDebugCommandItem>();
-                    item.UIText.text = search;
-                    item.Initialize(this);
-                });
+                    var matched = keys.Where(key => Regex.IsMatch(key.ToLower(), pattern));
+                    foreach (Transform transform in CommandContents)
+                        Destroy(transform.gameObject);
+                    matched.ToList().ForEach(search =>
+                    {
+                        var prefab = Instantiate(CommandPrefabs, CommandContents);
+                        var item = prefab.GetComponent<ApplicationDebugCommandItemSystem>();
+                        item.UIText.text = search;
+                        item.Setup(this);
+                    });
 
-                CommandSupporterObject.SetActive(matched.Any());
+                    CommandSupporterObject.SetActive(matched.Any());
+                }
+                catch (Exception ex)
+                {
+                    
+                }
             });
+        }
+
+        public void Dispose()
+        {
+
         }
     }
 }

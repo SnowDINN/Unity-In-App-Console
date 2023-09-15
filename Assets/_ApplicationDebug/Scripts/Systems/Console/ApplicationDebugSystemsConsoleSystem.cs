@@ -3,52 +3,35 @@ using System.Text;
 using TMPro;
 using UnityEngine;
 
-namespace Anonymous
+namespace Anonymous.Systems
 {
-    public class ApplicationDebugOptions : MonoBehaviour
+    public class ApplicationDebugSystemsConsoleSystem : MonoBehaviour, IApplicationDebugSystems
     {
+        [Header("Debug Information")]
         public TextMeshProUGUI UITextInformation;
 
         [Header("Debug Log")]
-        public GameObject LogObject;
         public TextMeshProUGUI UITextLogBox;
-
-        [Header("Debug Status")]
-        public GameObject StatusObject;
 
         private readonly StringBuilder builder = new();
         private Coroutine coroutine;
 
-        private void Awake()
+        public void Setup()
         {
             UITextInformation.text = $"Build Version : {Application.version}\nBuild  Number : {Application.version}";
-            
-            Debug.unityLogger.logEnabled = ApplicationDebug.isOn;
+
+            Debug.unityLogger.logEnabled = ApplicationDebug.isActivate(DebugOptions.DEBUG);
             if (Debug.unityLogger.logEnabled)
                 Application.logMessageReceived += LogMessageReceived;
-
-            LogObject.SetActive(false);
-            StatusObject.SetActive(false);
         }
 
-        private void OnDestroy()
+        public void Dispose()
         {
             if (Debug.unityLogger.logEnabled)
                 Application.logMessageReceived -= LogMessageReceived;
-            
+
             if (coroutine != null)
                 StopCoroutine(coroutine);
-        }
-
-        public void DebugLogActivator()
-        {
-            LogObject.SetActive(!ApplicationDebug.isOn);
-            if (!ApplicationDebug.isOn)
-                Application.logMessageReceived += LogMessageReceived;
-            else
-                Application.logMessageReceived -= LogMessageReceived;
-
-            UITextLogBox.text = string.Empty;
         }
 
         private void LogMessageReceived(string condition, string stackTrace, LogType type)
@@ -65,19 +48,23 @@ namespace Anonymous
             switch (type)
             {
                 case LogType.Exception:
-                    builder.AppendLine($"<color=red>{message}</color><br><color=#a52a2aff>{stackTrace}</color><br>");
+                    builder.AppendLine($"<color=red>{message}</color><br><color=#a52a2aff>{stackTrace}</color>" +
+                                       $"{(message.Contains("<color=#ffa500ff>") ? "" : "<br>")}");
                     break;
 
                 case LogType.Error:
-                    builder.AppendLine($"<color=red>{message}</color><br>");
+                    builder.AppendLine($"<color=red>{message}</color>" +
+                                       $"{(message.Contains("<color=#ffa500ff>") ? "" : "<br>")}");
                     break;
 
                 case LogType.Log:
-                    builder.AppendLine($"{message}<br>");
+                    builder.AppendLine($"{message}" +
+                                       $"{(message.Contains("<color=#ffa500ff>") ? "" : "<br>")}");
                     break;
 
                 default:
-                    builder.AppendLine($"<color=yellow>{message}</color><br>");
+                    builder.AppendLine($"<color=yellow>{message}</color>" +
+                                       $"{(message.Contains("<color=#ffa500ff>") ? "" : "<br>")}");
                     break;
             }
 

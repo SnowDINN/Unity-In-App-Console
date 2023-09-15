@@ -1,41 +1,35 @@
+using Anonymous.Systems;
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.EventSystems;
 
 namespace Anonymous
 {
-    public class ApplicationDebugCanvas : MonoBehaviour, IPointerClickHandler
+    public class ApplicationDebugSystemsController : MonoBehaviour, IApplicationDebugSystems
     {
-        [Header("Debug Status")]
-        public List<GameObject> PrintObjects;
+        [Header("Print Debug")]
+        public GameObject PrintDebugObject;
 
         private CanvasGroup canvasGroup;
         private Coroutine coroutine;
 
-        private void Awake()
+        public void Setup()
         {
             canvasGroup = GetComponent<CanvasGroup>();
             coroutine = StartCoroutine(inputDetectorAsync());
         }
 
-        private void OnDestroy()
+        public void Dispose()
         {
             if (coroutine != null)
                 StopCoroutine(coroutine);
         }
 
-        public void OnPointerClick(PointerEventData eventData)
-        {
-            OnPointerClickCancel();
-        }
-
-        public void OnPointerClickDebug()
+        public void OnPointerEnter()
         {
             canvasGroupActivator(true);
         }
 
-        public void OnPointerClickCancel()
+        public void OnPointerExit()
         {
             canvasGroupActivator(false);
         }
@@ -49,20 +43,24 @@ namespace Anonymous
                 canvasGroup.blocksRaycasts = isActive;
             }
             
-            PrintObjects.ForEach(print => { print.SetActive(!isActive); });
+            PrintDebugObject.SetActive(!isActive);
+            if (ApplicationDebug.isActivate(DebugOptions.DEBUG_STATUS))
+                ApplicationDebugSystemsProfilerSystem.Default.Activate(!isActive);
+            else
+                ApplicationDebugSystemsProfilerSystem.Default.Activate(false);
         }
 
         private IEnumerator inputDetectorAsync()
         {
-            while (ApplicationDebug.isOn)
+            while (ApplicationDebug.isActivate(DebugOptions.DEBUG))
             {
 #if UNITY_EDITOR
-                if (Input.GetKeyDown(KeyCode.Space))
+                if (Input.GetKeyDown(KeyCode.BackQuote))
                 {
                     if (canvasGroup.alpha == 0.0f)
-                        OnPointerClickDebug();
+                        OnPointerEnter();
                     else
-                        OnPointerClickCancel();
+                        OnPointerExit();
                 }
 #else
                 if (Input.touchCount == 3)
