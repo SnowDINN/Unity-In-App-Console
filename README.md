@@ -1,10 +1,10 @@
-# 유니티 인앱 콘솔
-인앱에서 유니티 콘솔을 확인할 수 있습니다.  
-커맨드 기능과 프로파일러 기능이 추가되어 있습니다.
+# Introduce
+You can check the Unity console in the in-app.  
+Command and Profiler features are added.
 
-## 커맨드
-인앱 콘솔에서 커맨드를 통해 실행시킬 함수를 입력하여 호출할 수 있습니다.
+## Command function
+In the in-app console, you can call by typing a function to run through the command.
 
-## 프로파일러
-간단한 프로파일러입니다.  
-실시간 프레임과 메모리 사용률을 출력합니다.
+## Profiler function
+A simple profiler.  
+Outputs real-time frames and memory utilization.
