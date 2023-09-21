@@ -1,5 +1,5 @@
 # Introduce
-You can check the Unity console in the in-app. (use TextMeshProUGUI)  
+You can check the Unity console in the in-app.  
 Command and Profiler features are added.
 
 ## Command Function
