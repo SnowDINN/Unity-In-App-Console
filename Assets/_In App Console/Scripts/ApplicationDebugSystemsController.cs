@@ -7,7 +7,7 @@ namespace Anonymous
     public class ApplicationDebugSystemsController : MonoBehaviour, IApplicationDebugSystems
     {
         [Header("Print Debug")]
-        public GameObject PrintDebugObject;
+        public CanvasGroup profileGroup;
 
         private CanvasGroup canvasGroup;
         private Coroutine coroutine;
@@ -16,6 +16,8 @@ namespace Anonymous
         {
             canvasGroup = GetComponent<CanvasGroup>();
             coroutine = StartCoroutine(inputDetectorAsync());
+            
+            GroupController(true);
         }
 
         public void Dispose()
@@ -43,11 +45,11 @@ namespace Anonymous
                 canvasGroup.blocksRaycasts = isActive;
             }
             
-            PrintDebugObject.SetActive(!isActive);
+            GroupController(!isActive);
             if (ApplicationDebug.isActivate(DebugOptions.DEBUG_STATUS))
-                ApplicationDebugSystemsProfilerSystem.Default.Activate(!isActive);
+                ApplicationDebugProfilerSystem.Default.Activate(!isActive);
             else
-                ApplicationDebugSystemsProfilerSystem.Default.Activate(false);
+                ApplicationDebugProfilerSystem.Default.Activate(false);
         }
 
         private IEnumerator inputDetectorAsync()
@@ -68,6 +70,16 @@ namespace Anonymous
 #endif
                 yield return null;
             }
+        }
+        
+        private void GroupController(bool isActive)
+        {
+            profileGroup.alpha = isActive ? 1.0f : 0.0f;
+
+#if UNITY_EDITOR
+            profileGroup.interactable = isActive;
+            profileGroup.blocksRaycasts = isActive;      
+#endif
         }
     }
 }

@@ -13,6 +13,8 @@ namespace Anonymous
     
     public class ApplicationDebug
     {
+        private const string ERROR_COMMAND = "<color=red>This command is error.</color>";
+        
         private static GameObject go;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -20,16 +22,26 @@ namespace Anonymous
         {
             StartedApplicationDebug();
             
-            ApplicationDebugSystemsCommandSystem.AddCommand("status", command =>
+            ApplicationDebugCommandSystem.AddCommand("Profiler", command =>
             {
-                Debug.Log($"Status : {Profiler.logFile}");
+                var split = command.Split(' ');
+                switch (split.Length)
+                {
+                    case 1:
+                    {
+                        var isOn = switchActivate(DebugOptions.DEBUG_STATUS);
+						
+                        Debug.Log("Profiler : " + $"{(isOn ? "on" : "off")}");
+                        break;
+                    }
+                    default:
+                    {
+                        Debug.Log(ERROR_COMMAND);
+                        break;
+                    }
+                }
             });
-            
-            ApplicationDebugSystemsCommandSystem.AddCommand("profiler", command =>
-            {
-                var isOn = switchActivate(DebugOptions.DEBUG_STATUS);
-                Debug.Log($"Profiler : " + $"{(isOn ? "on" : "off")}");
-            });
+            ApplicationDebugCommandSystem.AddComment("Profiler", "Device Profiling Un/Activate");
         }
         
         public static void StartedApplicationDebug()
@@ -40,6 +52,9 @@ namespace Anonymous
             go = Object.Instantiate(Resources.Load<GameObject>("Debug"));
             Object.DontDestroyOnLoad(go);
             onActivate(DebugOptions.DEBUG);
+
+            var canvas = go.GetComponent<Canvas>();
+            canvas.worldCamera = Camera.main;
 
             var components = go.GetComponentsInChildren<IApplicationDebugSystems>(true).ToArray();
             foreach (var component in components)

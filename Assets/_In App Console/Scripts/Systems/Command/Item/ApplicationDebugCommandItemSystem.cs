@@ -6,17 +6,17 @@ namespace Anonymous.Systems
     public class ApplicationDebugCommandItemSystem : MonoBehaviour
     {
         [SerializeField] public TextMeshProUGUI UIText;
-        private ApplicationDebugSystemsCommandSystem systemsCommandSystem;
+        private ApplicationDebugCommandSystem commandSystem;
 
-        public void Setup(ApplicationDebugSystemsCommandSystem systemsCommandSystem) => this.systemsCommandSystem = systemsCommandSystem;
+        public void Setup(ApplicationDebugCommandSystem commandSystem) => this.commandSystem = commandSystem;
 
         public void OnClicked()
         {
-            systemsCommandSystem.UIInputCommand.text = UIText.text;
-            systemsCommandSystem.UIInputCommand.ActivateInputField();
-            systemsCommandSystem.UIInputCommand.MoveTextEnd(false);
+            commandSystem.UIInputCommand.text = UIText.text;
+            commandSystem.UIInputCommand.ActivateInputField();
+            commandSystem.UIInputCommand.MoveTextEnd(false);
 
-            systemsCommandSystem.CommandSupporterObject.SetActive(false);
+            commandSystem.CommandSupporterObject.SetActive(false);
         }
     }
 }
