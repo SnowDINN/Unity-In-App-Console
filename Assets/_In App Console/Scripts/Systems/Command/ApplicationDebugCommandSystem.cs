@@ -47,9 +47,21 @@ namespace Anonymous.Systems
 			"아", "자", "짜", "차", "카", "타", "파", "하"
 		};
 
+		private float supporterHeight
+		{
+			get
+			{
+				var canvasRect = (RectTransform)GetComponentInParent<Canvas>().transform;
+				return canvasRect.sizeDelta.y * 0.45f;
+			}
+		}
+
 		private void Awake()
 		{
 			supporterObject = CommandSupporterObject;
+
+			var rect = (RectTransform)supporterObject.transform;
+			rect.sizeDelta = new Vector2(rect.sizeDelta.x, supporterHeight);
 		}
 
 		public void Setup()
@@ -76,7 +88,7 @@ namespace Anonymous.Systems
 			UIInputCommand.onValueChanged.AddListener(command =>
 			{
 				UIInputCommand.text = Regex.Replace(UIInputCommand.text, @"\s+", " ");
-				
+
 				if (string.IsNullOrEmpty(command))
 				{
 					foreach (Transform transform in CommandContents)
@@ -134,15 +146,17 @@ namespace Anonymous.Systems
 			});
 
 			StartCoroutine(nameof(DetectingInputAsync));
+			StartCoroutine(nameof(DetectingCloseAsync));
 		}
 
 		public void Dispose()
 		{
 			historyIndex = -1;
 			StopCoroutine(nameof(DetectingInputAsync));
+			StopCoroutine(nameof(DetectingCloseAsync));
 		}
 
-		public void OnSelectHistory()
+		public void OpenHistory()
 		{
 			if (!string.IsNullOrEmpty(UIInputCommand.text))
 				return;
@@ -154,27 +168,6 @@ namespace Anonymous.Systems
 				return;
 
 			AddSupporterCommand(history, true);
-		}
-
-		public void OnDeselectHistory()
-		{
-			var eventDataCurrentPosition = new PointerEventData(EventSystem.current)
-			{
-				position = new Vector2(Input.mousePosition.x, Input.mousePosition.y)
-			};
-			var results = new List<RaycastResult>();
-			EventSystem.current.RaycastAll(eventDataCurrentPosition, results);
-
-			var isTarget = false;
-			foreach (var dummy in results.Where(result =>
-				         result.gameObject.GetInstanceID() == supporterObject.GetInstanceID()))
-				isTarget = true;
-
-			if (!isTarget)
-			{
-				historyIndex = -1;
-				SupporterActive(false);
-			}
 		}
 
 		public static void AddCommand(string command, Action<string> action)
@@ -211,12 +204,14 @@ namespace Anonymous.Systems
 			foreach (Transform transform in CommandContents)
 				Destroy(transform.gameObject);
 
+			var rect = ((RectTransform)CommandContents.parent).rect;
 			foreach (var command in commands)
 			{
 				var prefab = Instantiate(CommandPrefabs, CommandContents);
 				var item = prefab.GetComponent<ApplicationDebugCommandItemSystem>();
-				item.UIText.text = command;
 				item.Setup(this);
+				item.SetText(command);
+				item.SetWidth(rect.width);
 			}
 
 			SupporterActive(isActive);
@@ -248,6 +243,61 @@ namespace Anonymous.Systems
 						UIInputCommand.caretPosition = UIInputCommand.text.Length;
 
 						UIInputCommand.MoveTextEnd(false);
+					}
+				}
+
+				yield return null;
+			}
+		}
+
+		private IEnumerator DetectingCloseAsync()
+		{
+			while (true)
+			{
+#if UNITY_EDITOR
+				if (Input.GetMouseButtonDown(0))
+				{
+					var eventDataCurrentPosition = new PointerEventData(EventSystem.current)
+					{
+						position = Input.mousePosition
+					};
+					var results = new List<RaycastResult>();
+					EventSystem.current.RaycastAll(eventDataCurrentPosition, results);
+
+					var isTarget = false;
+					foreach (var dummy in results.Where(result =>
+						         result.gameObject.GetInstanceID() == supporterObject.GetInstanceID() ||
+						         result.gameObject.GetInstanceID() == UIInputCommand.gameObject.GetInstanceID()))
+						isTarget = true;
+
+					if (!isTarget)
+					{
+						historyIndex = -1;
+						SupporterActive(false);
+					}
+				}
+#endif
+				
+				if (Input.touchCount > 0)
+				{
+					var touch = Input.GetTouch(0);
+					var eventDataCurrentPosition = new PointerEventData(EventSystem.current)
+					{
+						position = touch.position
+					};
+					var results = new List<RaycastResult>();
+					EventSystem.current.RaycastAll(eventDataCurrentPosition, results);
+
+					var isTarget = false;
+					foreach (var dummy in results.Where(result =>
+						         result.gameObject.GetInstanceID() == supporterObject.GetInstanceID() ||
+						         result.gameObject.GetInstanceID() == UIInputCommand.gameObject.GetInstanceID()))
+						isTarget = true;
+
+					if (!isTarget)
+					{
+						historyIndex = -1;
+						SupporterActive(false);
 					}
 				}
 
