@@ -16,7 +16,7 @@ namespace Anonymous.Systems
             commandSystem.UIInputCommand.ActivateInputField();
             commandSystem.UIInputCommand.MoveTextEnd(false);
 
-            commandSystem.CommandSupporterObject.SetActive(false);
+            ApplicationDebugCommandSystem.SupporterActive(false);
         }
     }
 }

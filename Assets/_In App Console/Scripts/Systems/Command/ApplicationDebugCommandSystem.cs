@@ -1,24 +1,33 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 namespace Anonymous.Systems
 {
 	public class ApplicationDebugCommandSystem : MonoBehaviour, IApplicationDebugSystems
 	{
-		private static readonly Dictionary<string, Action<string>> Command = new(StringComparer.OrdinalIgnoreCase);
-		private static readonly Dictionary<string, string> Comment = new();
+		private static readonly Dictionary<string, Action<string>> command = new(StringComparer.OrdinalIgnoreCase);
+		private static readonly Dictionary<string, string> comment = new();
+		private static readonly List<string> history = new();
 
+		private static int historyIndex = -1;
+
+		private static GameObject supporterObject;
+
+		[Header("Command Input")]
 		public TMP_InputField UIInputCommand;
 
-		[Header("Command Settings")]
-		public GameObject CommandPrefabs;
+		[Header("Command Support")]
+		[SerializeField] private GameObject CommandPrefabs;
+		[SerializeField] private Transform CommandContents;
 
-		public GameObject CommandSupporterObject;
-		public Transform CommandContents;
+		[Header("Command Support Object")]
+		[SerializeField] private GameObject CommandSupporterObject;
 
 		private readonly char[] chr =
 		{
@@ -38,42 +47,49 @@ namespace Anonymous.Systems
 			"아", "자", "짜", "차", "카", "타", "파", "하"
 		};
 
+		private void Awake()
+		{
+			supporterObject = CommandSupporterObject;
+		}
+
 		public void Setup()
 		{
 			AddCommand("Help", _ =>
 			{
-				foreach (var command in Comment)
+				foreach (var command in comment)
 					Debug.Log($"<color=orange>{command.Key}</color><br><color=white>{command.Value}<br></color>");
 			});
 
 			UIInputCommand.onSubmit.AddListener(value =>
 			{
 				var split = value.Split(' ');
-				if (Command.ContainsKey(split[0]))
+				if (command.ContainsKey(split[0]))
 				{
 					Debug.Log($"<color=#ffa500ff>[Command : {value}]</color>");
-					Command[split[0]].Invoke(value);
+					command[split[0]].Invoke(value);
 				}
 
+				AddHistory(value);
 				UIInputCommand.text = string.Empty;
-				UIInputCommand.ActivateInputField();
 			});
 
 			UIInputCommand.onValueChanged.AddListener(command =>
 			{
+				UIInputCommand.text = Regex.Replace(UIInputCommand.text, @"\s+", " ");
+				
 				if (string.IsNullOrEmpty(command))
 				{
 					foreach (Transform transform in CommandContents)
 						Destroy(transform.gameObject);
-					CommandSupporterObject.SetActive(false);
+					SupporterActive(false);
 					return;
 				}
 
-				if (Command == null || Command.Count == 0)
+				if (ApplicationDebugCommandSystem.command == null || ApplicationDebugCommandSystem.command.Count == 0)
 				{
 					foreach (Transform transform in CommandContents)
 						Destroy(transform.gameObject);
-					CommandSupporterObject.SetActive(false);
+					SupporterActive(false);
 					return;
 				}
 
@@ -110,48 +126,133 @@ namespace Anonymous.Systems
 							break;
 					}
 
-				var keys = Command.Keys.ToList();
+				var keys = ApplicationDebugCommandSystem.command.Keys.ToList();
 				keys.Sort();
 
-				try
-				{
-					var matched = keys.Where(key => Regex.IsMatch(key, pattern, RegexOptions.IgnoreCase));
-					foreach (Transform transform in CommandContents)
-						Destroy(transform.gameObject);
-					matched.ToList().ForEach(search =>
-					{
-						var prefab = Instantiate(CommandPrefabs, CommandContents);
-						var item = prefab.GetComponent<ApplicationDebugCommandItemSystem>();
-						item.UIText.text = search;
-						item.Setup(this);
-					});
-
-					CommandSupporterObject.SetActive(matched.Any());
-				}
-				catch (Exception ex)
-				{
-				}
+				var matched = keys.Where(key => Regex.IsMatch(key, pattern, RegexOptions.IgnoreCase));
+				AddSupporterCommand(matched, matched.Any());
 			});
+
+			StartCoroutine(nameof(DetectingInputAsync));
 		}
 
 		public void Dispose()
 		{
+			historyIndex = -1;
+			StopCoroutine(nameof(DetectingInputAsync));
+		}
+
+		public void OnSelectHistory()
+		{
+			if (!string.IsNullOrEmpty(UIInputCommand.text))
+				return;
+
+			if (supporterObject.activeSelf)
+				return;
+
+			if (history.Count <= 0)
+				return;
+
+			AddSupporterCommand(history, true);
+		}
+
+		public void OnDeselectHistory()
+		{
+			var eventDataCurrentPosition = new PointerEventData(EventSystem.current)
+			{
+				position = new Vector2(Input.mousePosition.x, Input.mousePosition.y)
+			};
+			var results = new List<RaycastResult>();
+			EventSystem.current.RaycastAll(eventDataCurrentPosition, results);
+
+			var isTarget = false;
+			foreach (var dummy in results.Where(result =>
+				         result.gameObject.GetInstanceID() == supporterObject.GetInstanceID()))
+				isTarget = true;
+
+			if (!isTarget)
+			{
+				historyIndex = -1;
+				SupporterActive(false);
+			}
 		}
 
 		public static void AddCommand(string command, Action<string> action)
 		{
-			Command[command] = action;
-		}
-
-		public static void RemoveCommand(string command)
-		{
-			if (Command.ContainsKey(command))
-				Command.Remove(command);
+			ApplicationDebugCommandSystem.command[command] = action;
 		}
 
 		public static void AddComment(string command, string comment)
 		{
-			Comment[command] = comment;
+			ApplicationDebugCommandSystem.comment[command] = comment;
+		}
+
+		public static void AddHistory(string command)
+		{
+			if (!string.IsNullOrEmpty(command))
+				history.Add(command);
+
+			historyIndex = -1;
+		}
+
+		public static void RemoveCommand(string command)
+		{
+			if (ApplicationDebugCommandSystem.command.ContainsKey(command))
+				ApplicationDebugCommandSystem.command.Remove(command);
+		}
+
+		public static void SupporterActive(bool isActive)
+		{
+			supporterObject.SetActive(isActive);
+		}
+
+		private void AddSupporterCommand(IEnumerable<string> commands, bool isActive)
+		{
+			foreach (Transform transform in CommandContents)
+				Destroy(transform.gameObject);
+
+			foreach (var command in commands)
+			{
+				var prefab = Instantiate(CommandPrefabs, CommandContents);
+				var item = prefab.GetComponent<ApplicationDebugCommandItemSystem>();
+				item.UIText.text = command;
+				item.Setup(this);
+			}
+
+			SupporterActive(isActive);
+		}
+
+		private IEnumerator DetectingInputAsync()
+		{
+			while (true)
+			{
+				if (UIInputCommand.isFocused)
+				{
+					if (Input.GetKeyDown(KeyCode.UpArrow))
+					{
+						if (historyIndex <= 0)
+							historyIndex = history.Count;
+
+						UIInputCommand.text = history[historyIndex -= 1];
+						UIInputCommand.caretPosition = UIInputCommand.text.Length;
+
+						UIInputCommand.MoveTextEnd(false);
+					}
+
+					if (Input.GetKeyDown(KeyCode.DownArrow))
+					{
+						if (historyIndex >= history.Count - 1)
+							historyIndex = -1;
+
+						UIInputCommand.text = history[historyIndex += 1];
+						UIInputCommand.caretPosition = UIInputCommand.text.Length;
+
+						UIInputCommand.MoveTextEnd(false);
+					}
+				}
+
+				yield return null;
+			}
 		}
 	}
 }
