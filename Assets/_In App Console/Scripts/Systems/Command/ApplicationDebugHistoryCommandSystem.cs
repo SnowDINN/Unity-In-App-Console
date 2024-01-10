@@ -4,20 +4,13 @@ using UnityEngine.EventSystems;
 
 namespace Anonymous.Systems
 {
-	public class ApplicationDebugHistoryCommandSystem : MonoBehaviour, IPointerClickHandler, IDeselectHandler
+	public class ApplicationDebugHistoryCommandSystem : MonoBehaviour, IPointerClickHandler
 	{
-		[SerializeField] private UnityEvent OnSelectClick;
-		[Space(10)]
-		[SerializeField] private UnityEvent OnDeselectClick;
+		[SerializeField] private UnityEvent OnClick;
 
 		public void OnPointerClick(PointerEventData eventData)
 		{
-			OnSelectClick?.Invoke();
-		}
-
-		public void OnDeselect(BaseEventData eventData)
-		{
-			OnDeselectClick?.Invoke();
+			OnClick?.Invoke();
 		}
 	}
 }
