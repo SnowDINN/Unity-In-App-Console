@@ -6,57 +6,57 @@ using UnityEngine.Profiling;
 
 namespace Anonymous.Systems
 {
-    public class ApplicationDebugProfilerSystem : MonoBehaviour, IApplicationDebugSystems
-    {
-        public static ApplicationDebugProfilerSystem Default;
-        
-        [Header("Profiler GameObject")]
-        [SerializeField] private GameObject ProfilerObject;
+	public class ApplicationDebugProfilerSystem : MonoBehaviour, IApplicationDebugSystems
+	{
+		public static ApplicationDebugProfilerSystem Default;
 
-        [Header("Print Profiler Text")]
-        [SerializeField] private TextMeshProUGUI uiText;
+		[Header("Profiler GameObject")]
+		[SerializeField] private GameObject ProfilerObject;
 
-        private Coroutine coroutine;
-        private float time;
-        
-        public void Setup()
-        {
-            Default = this;
-            Activate(ApplicationDebug.isActivate(DebugOptions.DEBUG_STATUS));
-            
-            InvokeRepeating(nameof(refreshStatus), 0, 0.1f);
-            coroutine = StartCoroutine(deltaTimeAsync());
-        }
+		[Header("Print Profiler Text")]
+		[SerializeField] private TextMeshProUGUI uiText;
 
-        public void Dispose()
-        {
-            CancelInvoke(nameof(refreshStatus));
-            if (coroutine != null)
-                StopCoroutine(coroutine);
-        }
+		private Coroutine coroutine;
+		private float time;
 
-        private IEnumerator deltaTimeAsync()
-        {
-            while (ApplicationDebug.isActivate(DebugOptions.DEBUG))
-            {
-                time += (Time.deltaTime - time) * 0.1f;
-                yield return null;
-            }
-        }
+		public void Setup()
+		{
+			Default = this;
+			Activate(ApplicationDebug.isActivate(ApplicationDebug.PPK_PROFILER));
 
-        private void refreshStatus()
-        {
-            var latency = time * 1000.0f;
-            var fps = 1.0f / time;
+			InvokeRepeating(nameof(RefreshStatus), 0, 0.1f);
+			coroutine = StartCoroutine(DeltaTimeAsync());
+		}
 
-            uiText.text = $"FPS : {fps:N0} <size=15>[{latency:N1} ms]</size>";
-            uiText.text +=
-                $"\nRAM : {Profiler.GetTotalReservedMemoryLong() / 1048576:N0}MB <size=15>[{Math.Round((double)Profiler.GetTotalAllocatedMemoryLong() * 100 / Profiler.GetTotalReservedMemoryLong(), 1):N1}%]</size>";
-        }
+		public void Dispose()
+		{
+			CancelInvoke(nameof(RefreshStatus));
+			if (coroutine != null)
+				StopCoroutine(coroutine);
+		}
 
-        public void Activate(bool isActivate)
-        {
-            ProfilerObject.SetActive(isActivate);
-        }
-    }
+		public void Activate(bool isActivate)
+		{
+			ProfilerObject.SetActive(isActivate);
+		}
+
+		private IEnumerator DeltaTimeAsync()
+		{
+			while (ApplicationDebug.isActivate(ApplicationDebug.PPK_DEBUG))
+			{
+				time += (Time.deltaTime - time) * 0.1f;
+				yield return null;
+			}
+		}
+
+		private void RefreshStatus()
+		{
+			var latency = time * 1000.0f;
+			var fps = 1.0f / time;
+
+			uiText.text = $"FPS : {fps:N0} <size=15>[{latency:N1} ms]</size>";
+			uiText.text +=
+				$"\nRAM : {Profiler.GetTotalReservedMemoryLong() / 1048576:N0}MB <size=15>[{Math.Round((double)Profiler.GetTotalAllocatedMemoryLong() * 100 / Profiler.GetTotalReservedMemoryLong(), 1):N1}%]</size>";
+		}
+	}
 }

@@ -46,7 +46,7 @@ namespace Anonymous
             }
             
             GroupController(!isActive);
-            if (ApplicationDebug.isActivate(DebugOptions.DEBUG_STATUS))
+            if (ApplicationDebug.isActivate(ApplicationDebug.PPK_PROFILER))
                 ApplicationDebugProfilerSystem.Default.Activate(!isActive);
             else
                 ApplicationDebugProfilerSystem.Default.Activate(false);
@@ -54,7 +54,7 @@ namespace Anonymous
 
         private IEnumerator inputDetectorAsync()
         {
-            while (ApplicationDebug.isActivate(DebugOptions.DEBUG))
+            while (ApplicationDebug.isActivate(ApplicationDebug.PPK_DEBUG))
             {
 #if UNITY_EDITOR
                 if (Input.GetKeyDown(KeyCode.BackQuote))

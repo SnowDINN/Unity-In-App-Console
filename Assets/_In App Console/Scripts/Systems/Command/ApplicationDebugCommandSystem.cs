@@ -9,11 +9,58 @@ using UnityEngine.EventSystems;
 
 namespace Anonymous.Systems
 {
+	public enum SupportCommandType
+	{
+		Command,
+		Parameter
+	}
+
+	public class Command
+	{
+		private readonly List<List<string>> parameters = new();
+		private Action<string> onExecute;
+		public string Comment { get; private set; }
+
+		public Command AddComment(string comment)
+		{
+			Comment = comment;
+			return this;
+		}
+
+		public Command AddExecute(Action<string> onExecute)
+		{
+			this.onExecute = onExecute;
+			return this;
+		}
+		
+		public Command AddParameters(List<string> parameters)
+		{
+			this.parameters.Add(parameters);
+			return this;
+		}
+
+		public void Execute(string command)
+		{
+			onExecute.Invoke(command);
+		}
+
+		public List<string> GetParameters(int index)
+		{
+			var parameterIndex = index - 2;
+			return parameters[parameterIndex];
+		}
+
+		public bool canPrameter(int index)
+		{
+			var parameterIndex = index - 2;
+			return parameterIndex >= 0 && parameters.Count > parameterIndex;
+		}
+	}
+
 	public class ApplicationDebugCommandSystem : MonoBehaviour, IApplicationDebugSystems
 	{
-		private static readonly Dictionary<string, Action<string>> command = new(StringComparer.OrdinalIgnoreCase);
-		private static readonly Dictionary<string, string> comment = new();
-		private static readonly List<string> history = new();
+		private static readonly Dictionary<string, Command> commands = new(StringComparer.OrdinalIgnoreCase);
+		private static readonly List<string> histories = new();
 
 		private static int historyIndex = -1;
 
@@ -24,6 +71,7 @@ namespace Anonymous.Systems
 
 		[Header("Command Support")]
 		[SerializeField] private GameObject CommandPrefabs;
+
 		[SerializeField] private Transform CommandContents;
 
 		[Header("Command Support Object")]
@@ -66,19 +114,21 @@ namespace Anonymous.Systems
 
 		public void Setup()
 		{
-			AddCommand("Help", _ =>
+			AddCommand("Help").AddExecute(_ =>
 			{
-				foreach (var command in comment)
-					Debug.Log($"<color=orange>{command.Key}</color><br><color=white>{command.Value}<br></color>");
+				foreach (var command in commands
+					         .Where(command => !string.IsNullOrEmpty(command.Value.Comment)))
+					Debug.Log(
+						$"<color=orange>{command.Key}</color><br><color=white>{command.Value.Comment}<br></color>");
 			});
 
 			UIInputCommand.onSubmit.AddListener(value =>
 			{
 				var split = value.Split(' ');
-				if (command.ContainsKey(split[0]))
+				if (commands.ContainsKey(split[0]))
 				{
 					Debug.Log($"<color=#ffa500ff>[Command : {value}]</color>");
-					command[split[0]].Invoke(value);
+					commands[split[0]].Execute(value);
 				}
 
 				AddHistory(value);
@@ -97,7 +147,7 @@ namespace Anonymous.Systems
 					return;
 				}
 
-				if (ApplicationDebugCommandSystem.command == null || ApplicationDebugCommandSystem.command.Count == 0)
+				if (commands == null || commands.Count == 0)
 				{
 					foreach (Transform transform in CommandContents)
 						Destroy(transform.gameObject);
@@ -105,44 +155,40 @@ namespace Anonymous.Systems
 					return;
 				}
 
-				var pattern = "";
-				foreach (var search in command)
-					switch (search)
-					{
-						case >= 'ㄱ' and <= 'ㅎ':
-						{
-							for (var j = 0; j < chr.Length; j++)
-								if (search == chr[j])
-									pattern += $"[{str[j]}-{(char)(chrint[j + 1] - 1)}]";
+				var split = command.Split(" ");
+				if (split.Length == 1)
+				{
+					var matched = RecommandCommand(split[0], commands.Keys.ToList());
 
-							break;
-						}
-						case >= '가':
-						{
-							var magic = (search - '가') % 588;
-							if (magic == 0)
-							{
-								pattern += $"[{search}-{(char)(search + 27)}]";
-							}
-							else
-							{
-								magic = 27 - magic % 28;
-								pattern += $"[{search}-{(char)(search + magic)}]";
-							}
+					var useRecommand = true;
+					foreach (var match in matched)
+						if (match == split[0])
+							useRecommand = false;
 
-							break;
-						}
-						case >= 'A' and <= 'z':
-						case >= '0' and <= '9':
-							pattern += search;
-							break;
-					}
+					if (useRecommand)
+						AddSupporterCommand(SupportCommandType.Command, matched, matched.Any());
+					else
+						SupporterActive(false);
+				}
+				else if (commands[split[0]].canPrameter(split.Length))
+				{
+					var recommand = commands[split[0]].GetParameters(split.Length);
+					var matched = RecommandCommand(split[^1], recommand);
 
-				var keys = ApplicationDebugCommandSystem.command.Keys.ToList();
-				keys.Sort();
+					var useRecommand = true;
+					foreach (var match in matched)
+						if (match == split[^1])
+							useRecommand = false;
 
-				var matched = keys.Where(key => Regex.IsMatch(key, pattern, RegexOptions.IgnoreCase));
-				AddSupporterCommand(matched, matched.Any());
+					if (useRecommand)
+						AddSupporterCommand(SupportCommandType.Parameter, matched, matched.Any());
+					else
+						SupporterActive(false);
+				}
+				else
+				{
+					SupporterActive(false);
+				}
 			});
 
 			StartCoroutine(nameof(DetectingInputAsync));
@@ -164,34 +210,30 @@ namespace Anonymous.Systems
 			if (supporterObject.activeSelf)
 				return;
 
-			if (history.Count <= 0)
+			if (histories.Count <= 0)
 				return;
 
-			AddSupporterCommand(history, true);
+			AddSupporterCommand(SupportCommandType.Command, histories, true);
 		}
 
-		public static void AddCommand(string command, Action<string> action)
+		public static Command AddCommand(string key)
 		{
-			ApplicationDebugCommandSystem.command[command] = action;
-		}
-
-		public static void AddComment(string command, string comment)
-		{
-			ApplicationDebugCommandSystem.comment[command] = comment;
+			commands[key] = new Command();
+			return commands[key];
 		}
 
 		public static void AddHistory(string command)
 		{
 			if (!string.IsNullOrEmpty(command))
-				history.Add(command);
+				histories.Add(command);
 
 			historyIndex = -1;
 		}
 
 		public static void RemoveCommand(string command)
 		{
-			if (ApplicationDebugCommandSystem.command.ContainsKey(command))
-				ApplicationDebugCommandSystem.command.Remove(command);
+			if (commands.ContainsKey(command))
+				commands.Remove(command);
 		}
 
 		public static void SupporterActive(bool isActive)
@@ -199,7 +241,7 @@ namespace Anonymous.Systems
 			supporterObject.SetActive(isActive);
 		}
 
-		private void AddSupporterCommand(IEnumerable<string> commands, bool isActive)
+		private void AddSupporterCommand(SupportCommandType type, IEnumerable<string> commands, bool isActive)
 		{
 			foreach (Transform transform in CommandContents)
 				Destroy(transform.gameObject);
@@ -212,9 +254,49 @@ namespace Anonymous.Systems
 				item.Setup(this);
 				item.SetText(command);
 				item.SetWidth(rect.width);
+				item.useParameter(type == SupportCommandType.Parameter);
 			}
 
 			SupporterActive(isActive);
+		}
+
+		private IEnumerable<string> RecommandCommand(string command, List<string> recommand)
+		{
+			var pattern = "";
+			foreach (var search in command)
+				switch (search)
+				{
+					case >= 'ㄱ' and <= 'ㅎ':
+					{
+						for (var j = 0; j < chr.Length; j++)
+							if (search == chr[j])
+								pattern += $"[{str[j]}-{(char)(chrint[j + 1] - 1)}]";
+
+						break;
+					}
+					case >= '가':
+					{
+						var magic = (search - '가') % 588;
+						if (magic == 0)
+						{
+							pattern += $"[{search}-{(char)(search + 27)}]";
+						}
+						else
+						{
+							magic = 27 - magic % 28;
+							pattern += $"[{search}-{(char)(search + magic)}]";
+						}
+
+						break;
+					}
+					case >= 'A' and <= 'z':
+					case >= '0' and <= '9':
+						pattern += search;
+						break;
+				}
+
+			recommand.Sort();
+			return recommand.Where(key => Regex.IsMatch(key, pattern, RegexOptions.IgnoreCase));
 		}
 
 		private IEnumerator DetectingInputAsync()
@@ -226,9 +308,9 @@ namespace Anonymous.Systems
 					if (Input.GetKeyDown(KeyCode.UpArrow))
 					{
 						if (historyIndex <= 0)
-							historyIndex = history.Count;
+							historyIndex = histories.Count;
 
-						UIInputCommand.text = history[historyIndex -= 1];
+						UIInputCommand.text = histories[historyIndex -= 1];
 						UIInputCommand.caretPosition = UIInputCommand.text.Length;
 
 						UIInputCommand.MoveTextEnd(false);
@@ -236,10 +318,10 @@ namespace Anonymous.Systems
 
 					if (Input.GetKeyDown(KeyCode.DownArrow))
 					{
-						if (historyIndex >= history.Count - 1)
+						if (historyIndex >= histories.Count - 1)
 							historyIndex = -1;
 
-						UIInputCommand.text = history[historyIndex += 1];
+						UIInputCommand.text = histories[historyIndex += 1];
 						UIInputCommand.caretPosition = UIInputCommand.text.Length;
 
 						UIInputCommand.MoveTextEnd(false);
@@ -277,7 +359,7 @@ namespace Anonymous.Systems
 					}
 				}
 #endif
-				
+
 				if (Input.touchCount > 0)
 				{
 					var touch = Input.GetTouch(0);

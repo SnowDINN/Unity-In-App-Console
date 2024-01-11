@@ -1,3 +1,4 @@
+using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -9,21 +10,28 @@ namespace Anonymous.Systems
 	{
 		[Header("Command")]
 		[SerializeField] private Button uiButton;
+
 		[SerializeField] private TextMeshProUGUI uiText;
 
 		[Header("Layout")]
 		[SerializeField] private LayoutElement layout;
-		
+
 		private ApplicationDebugCommandSystem commandSystem;
+		private bool isParameter;
+
+		public void OnPointerExit(PointerEventData eventData)
+		{
+			uiButton.OnDeselect(eventData);
+		}
 
 		public void Setup(ApplicationDebugCommandSystem commandSystem)
 		{
 			this.commandSystem = commandSystem;
 		}
-		
-		public void OnPointerExit(PointerEventData eventData)
+
+		public void useParameter(bool isParameter)
 		{
-			uiButton.OnDeselect(eventData);
+			this.isParameter = isParameter;
 		}
 
 		public void SetWidth(float width)
@@ -38,7 +46,25 @@ namespace Anonymous.Systems
 
 		public void OnClicked()
 		{
-			commandSystem.UIInputCommand.text = uiText.text;
+			if (isParameter)
+			{
+				var split = commandSystem.UIInputCommand.text.Split(" ").ToList();
+				split[^1] = uiText.text;
+
+				var command = string.Empty;
+				for (var i = 0; i < split.Count; i++)
+					if (i == 0)
+						command += $"{split[i]}";
+					else
+						command += $" {split[i]}";
+
+				commandSystem.UIInputCommand.text = command;
+			}
+			else
+			{
+				commandSystem.UIInputCommand.text = uiText.text;
+			}
+
 			commandSystem.UIInputCommand.ActivateInputField();
 			commandSystem.UIInputCommand.MoveTextEnd(false);
 

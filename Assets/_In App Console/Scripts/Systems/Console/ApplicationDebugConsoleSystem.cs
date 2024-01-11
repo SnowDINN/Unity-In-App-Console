@@ -21,7 +21,7 @@ namespace Anonymous.Systems
 		{
 			UITextInformation.text = $"Build Version : {Application.version}\nBuild  Number : {Application.version}";
 
-			Debug.unityLogger.logEnabled = ApplicationDebug.isActivate(DebugOptions.DEBUG);
+			Debug.unityLogger.logEnabled = ApplicationDebug.isActivate(ApplicationDebug.PPK_DEBUG);
 			if (Debug.unityLogger.logEnabled)
 				Application.logMessageReceived += LogMessageReceived;
 		}
@@ -37,10 +37,10 @@ namespace Anonymous.Systems
 
 		private void LogMessageReceived(string condition, string stackTrace, LogType type)
 		{
-			coroutine = StartCoroutine(logMessageReceivedAsync(condition, stackTrace, type));
+			coroutine = StartCoroutine(LogMessageReceivedAsync(condition, stackTrace, type));
 		}
 
-		private IEnumerator logMessageReceivedAsync(string condition, string stackTrace, LogType type)
+		private IEnumerator LogMessageReceivedAsync(string condition, string stackTrace, LogType type)
 		{
 			if (string.IsNullOrEmpty(condition))
 				yield break;
@@ -64,12 +64,12 @@ namespace Anonymous.Systems
 
 			UITextLogBox.text = builder.ToString();
 
-			var limitIndex = 50000;
-			if (builder.Length > limitIndex)
-			{
-				builder.Clear();
-				builder.Append(UITextLogBox.text[^limitIndex..]);
-			}
+			const int limitIndex = 50000;
+			if (builder.Length <= limitIndex)
+				yield break;
+			
+			builder.Clear();
+			builder.Append(UITextLogBox.text[^limitIndex..]);
 		}
 	}
 }
