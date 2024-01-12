@@ -29,14 +29,9 @@ namespace Anonymous.Systems
 			this.commandSystem = commandSystem;
 		}
 
-		public void useParameter(bool isParameter)
+		public void SetSupportType(bool isParameter)
 		{
 			this.isParameter = isParameter;
-		}
-
-		public void SetWidth(float width)
-		{
-			layout.preferredWidth = width;
 		}
 
 		public void SetText(string text)
