@@ -253,8 +253,7 @@ namespace Anonymous.Systems
 				var item = prefab.GetComponent<ApplicationDebugCommandItemSystem>();
 				item.Setup(this);
 				item.SetText(command);
-				item.SetWidth(rect.width);
-				item.useParameter(type == SupportCommandType.Parameter);
+				item.SetSupportType(type == SupportCommandType.Parameter);
 			}
 
 			SupporterActive(isActive);
